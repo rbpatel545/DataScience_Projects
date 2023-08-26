@@ -1,0 +1,583 @@
+---
+title: "Group_6_HR_Analytics"
+author: "Rahul"
+date: "2023-05-14"
+output: html_document
+Title : HR Analytics Exploratory analysis
+---
+
+```{r setup, include=FALSE}
+
+install.packages('ggplot2')
+install.packages('tidyr')
+install.packages('dplyr')
+install.packages('caret')
+install.packages('e1071')
+install.packages('Epi')
+install.packages('lubridate')
+install.packages("readr")
+```
+
+```{r}
+library(ggplot2)
+library(e1071)
+library(tidyr)
+library(dplyr)
+library(caret)
+library(lubridate)
+library(Epi)
+library(readr)
+```
+#Loading the HR DataSet 
+#Changing Class of Date type fields from char to Date
+```{r pressure, echo=FALSE}
+getwd()
+setwd('C:\\Users\\Admin\\Desktop\\HR Analytics Exploratory  Data Analysis')
+hrdataset=read.csv("flat_file.csv",header= TRUE, stringsAsFactors = FALSE, na.strings= c(""," ",NA))
+
+```
+
+```{r pressure, echo=FALSE}
+hrdataset=read.csv("flat_file.csv",header= TRUE, stringsAsFactors = FALSE, na.strings= c(""," ",NA))
+hrdataset$LastPerformanceReview_Date <- as.Date(hrdataset$LastPerformanceReview_Date,"%Y-%m-%d")
+hrdataset$DateofHire <- as.Date(hrdataset$DateofHire, format = "%Y-%m-%d")
+hrdataset$DateofTermination <- as.Date(hrdataset$DateofTermination, format ="%Y-%m-%d")
+
+```
+
+#Check class of Date Type
+#Check values of Date Type field
+
+```{r pressure, echo=FALSE}
+sapply(hrdataset,class)
+head(hrdataset)
+summary(hrdataset)
+
+```
+
+```{r pressure, echo=FALSE}
+sapply(hrdataset,class)
+head(hrdataset)
+summary(hrdataset)
+
+```
+
+#On Exploring the dataset we understood the following -
+#Department wise distribution in DataSet shows ~65% belong to Production, followed by IT & Sales
+#Emp Satisfaction in majorly 3 and above for all departments
+#Dissatisfied Emp (<3) belongs to Sales & Production
+#Distribution on Sex across departments - Female population is higher than Male
+#Majority of Employees in Data set have score of Fully Meets,Underperformers are from Production & Sales
+#Majority leaving organization from Production followed by IT/IS, Sales & Software
+
+#------Q1---What, if anything, increases the number of sick days that have been taken over the past year?----------
+
+#Identifying Impact of all variables on Sick Days (Absences) as Target Variable
+#From Summary of dataset, we understand Median of Absence is 9 & 75th Quartile is 11
+#Hence, for purpose of this project assuming Absence in range 11 - 15 as high & 15+ as very high
+#Identifying relationship between Salary, Engagement Survey, Empsatisfaction, Special Project,Dayslate, Absences
+
+
+
+```{r pressure, echo=FALSE}
+pairs(hrdataset[,c(5,6,7,12,13,14)], pch = 19)
+```
+#4% correlation between Absence & Empsatisfaction
+#1% correlation between Absence & Engagement Survey
+#19% correlation between Absence & Salary
+# 46% Correlation between Absence & Special Projects
+# -7% correlation between Absence & DayLateLast 30
+# -17% correlation between Absence & Years in Post
+
+
+```{r pressure, echo=FALSE}
+cor(hrdataset$Absences,hrdataset$EmpSatisfaction)
+cor(hrdataset$Absences,hrdataset$Salary)
+cor(hrdataset$Absences,hrdataset$SpecialProjectsCount)
+cor(hrdataset$Absences,hrdataset$DaysLateLast30)
+cor(hrdataset$Absences,hrdataset$Years_in_post)
+```
+#From above analysis checking Salary & Special Projects since these are showing relatively some what better correlation
+#Scatter Plot of Salary Vs Absence - Department Wise
+#Findings : Absence taken by IT/IS & Software Eng. are very high, followed by production employees
+
+```{r pressure, echo=FALSE}
+ggplot( hrdataset ) + 
+  geom_point(mapping = aes( x = Absences, y = Salary, color= Department)) + 
+  xlab("-- Absences --") + 
+  ylab("Salary") + 
+  labs( title = "Salary vs Absence", subtitle = "Analysing the chart" ) + facet_wrap(~Department,nrow = 2)
+theme_classic()
+
+```
+
+
+#Breaking down Special Projects count Vs Absence - Department Wise
+#Median of Special Projects = 0 & Mean is 1, hence considering project count greater than 1 as high
+#Findings : IT/IS, Software Eng, Admin are involved in Spl Projects ranging 5 to 7 with high leaves
+#No special projects for Production & Sales, yet absences are high
+
+
+
+```{r pressure, echo=FALSE}
+ggplot( hrdataset ) + 
+  geom_point(mapping = aes( x = Absences, y = SpecialProjectsCount, color= Department)) + 
+  xlab("-- Absences --")+
+  ylab("Special Projects") + 
+  labs( title = "Special Projects vs Absence", subtitle = "Analysing the chart" ) + facet_wrap(~Department,nrow = 2)+
+theme_classic()
+
+```
+
+#Lets Check Absence wrt to categorical Variables Department,EmploymentStatus, PerformanceScore,Sex
+#Performance Score vs Absence - Mostly Exceeds & Fully Meets candidates are taking avg leaves around 11, weak association seen
+
+
+```{r pressure, echo=FALSE}
+ggplot(hrdataset, aes(PerformanceScore, Absences)) + geom_boxplot(fill = "red")+
+  scale_y_continuous("Absences")+
+  labs(title = "Box Plot", x = "PerformanceScore")
+
+```
+
+#checking Department Vs Absences - Admin & ITS leaves are higher than median (9), some sub fields are associated
+
+```{r pressure, echo=FALSE}
+ggplot(hrdataset, aes(Department, Absences)) + geom_boxplot(fill = "red")+
+  scale_y_continuous("Absences")+
+  labs(title = "Box Plot", x = "Department")
+
+```
+#EmploymentStatus Vs Absences - Median leaves by all 3 categories are less than 10, weak significant association
+
+
+
+```{r pressure, echo=FALSE}
+ggplot(hrdataset, aes(EmploymentStatus, Absences)) + geom_boxplot(fill = "green")+
+  scale_y_continuous("Absences")+
+  labs(title = "Box Plot", x = "Department")
+
+```
+#Position Vs Absences - Median of leaves taken by some levels are taking higher, Moderate association
+#Example - Administrative Assistant, BI Developer, BI Director, Director of Operations, IT Support
+
+
+
+```{r pressure, echo=FALSE}
+ggplot(hrdataset, aes(Position, Absences)) + geom_boxplot(fill = "green")+
+  scale_y_continuous("Absences")+
+  labs(title = "Box Plot", x = "Position")+theme(axis.text.x= element_text(angle=90))
+
+```
+
+#Lets now calculate the Mean, Std, Error & CI for relevant fields causing impact
+
+#For Department vs Absences - Mean Leaves by Admin & IT/IS is high
+
+```{r pressure, echo=FALSE}
+Abs_Dept_Stat <- hrdataset %>% group_by(Department) %>%
+  summarize(n = n(),
+            mean = mean(Absences),
+            sd = sd(Absences),
+            se = sd / sqrt(n),
+            UL = mean + (qnorm(0.975) * sd / sqrt(n)),
+            LL= mean - (qnorm(0.975) * sd / sqrt(n)))
+
+print(Abs_Dept_Stat)
+
+```
+
+#For Postion vs Absence - Mean leaves by IT Support, Network Engineer, BI Developer, Software engineers are high
+
+
+```{r pressure, echo=FALSE}
+Abs_Pos_Stat <- hrdataset %>% group_by(Position) %>%
+  summarize(n = n(),
+            mean = mean(Absences),
+            sd = sd(Absences),
+            se = sd / sqrt(n),
+            UL = mean + (qnorm(0.975) * sd / sqrt(n)),
+            LL= mean - (qnorm(0.975) * sd / sqrt(n)))
+
+print(Abs_Pos_Stat,n=31)
+
+```
+#Identifying if linear relationship exsist between any predictors
+#As per results Special Projects count is a important predictor
+#To conclude Absences are largely impacted by Special Projects and moderately with Salary, Department & Position
+
+```{r pressure, echo=FALSE}
+Abs_sal=lm(Absences ~ Salary + SpecialProjectsCount + EngagementSurvey + EmpSatisfaction + Years_in_post+Zip, data=hrdataset)
+summary(Abs_sal)
+
+```
+
+#------Q2---What, if anything, increases the likelihood of someone leaving the organisation ?--------------------
+
+#Identifying Impact of all variables EmploymentStatus on as Target Variable 
+#Identifying relationship between Salary, EngagementSurvey ,EmpSatisfaction, SpecialProjectsCount, Absences, Sex, Performance, EmployeeStatus, Department, Position
+
+#Firstly Convert the data column from Character type to Numeric Values
+
+```{r}
+# Create a new column "genderid"
+hrdataset$genderid <- NA
+
+# Convert "Sex" column to 0s and 1s and assign the values to "genderid"
+hrdataset$genderid <- ifelse(hrdataset$Sex == "M", 0, 1)
+
+# View the updated dataset
+print(hrdataset)
+
+```
+
+```{r}
+# Create a new column "PfrmId" 
+hrdataset$PfrmId <- NA
+
+# Convert "PerformanceScore" column to numerical values and assign them to "PfrmId"
+hrdataset$PfrmId <- ifelse(hrdataset$PerformanceScore == "Fully Meets", 3, ifelse(hrdataset$PerformanceScore == "Needs Improvement", 2, ifelse(hrdataset$PerformanceScore == "PIP", 1, 4)))
+
+# View the updated dataset
+print(hrdataset)
+
+
+```
+
+```{r}
+# Create a new column "EmpStat" 
+hrdataset$EmpStat <- NA
+
+# Convert "EmploymentStatus" column to numerical values and assign them to "EmpStat"
+hrdataset$EmpStat <- ifelse(hrdataset$EmploymentStatus == "Active", 1,
+                     ifelse(hrdataset$EmploymentStatus == "Voluntarily Terminated", 2, 1))
+
+# View the updated dataset
+print(hrdataset)
+```
+
+```{r}
+# Create a new column "Dept_No" 
+hrdataset$Dept_No <- NA
+
+# Convert "Department" column to numerical values and assign them to "Dept_No"
+hrdataset$Dept_No <- ifelse(hrdataset$Department == "Production", 1,
+                     ifelse(hrdataset$Department == "Admin Offices", 2,
+                            ifelse(hrdataset$Department == "Executive Office", 3,
+                                   ifelse(hrdataset$Department == "IT/IS", 4,
+                                          ifelse(hrdataset$Department == "Sales", 5, 6)))))
+
+# View the updated dataset
+print(hrdataset)
+```
+
+```{r}
+# Create a new column "Pos_No" with all NA values
+hrdataset$Pos_No <- NA
+
+# Create a unique list of all positions in the "Position" column
+position <- unique(hrdataset$Position)
+
+# Assign numeric values to each position and update the "Pos_No" column
+for (i in seq_along(position)) {
+  hrdataset$Pos_No[hrdataset$Position == position[i]] <- i
+}
+
+# Print the updated dataset with the new "Pos_No" column
+print(hrdataset)
+```
+
+
+
+#After conversion of data values here will look for more insights  
+```{r}
+
+pairs(hrdataset[,c(5,6,7,8,13,24,25,26,27,28)], pch = 19)
+
+```
+
+```{r}
+
+cor(hrdataset$EmpStat,hrdataset$Salary)
+cor(hrdataset$EmpStat,hrdataset$EngagementSurvey)
+cor(hrdataset$EmpStat,hrdataset$EmpSatisfaction)
+cor(hrdataset$EmpStat,hrdataset$SpecialProjectsCount)
+cor(hrdataset$EmpStat,hrdataset$Absences)
+cor(hrdataset$EmpStat,hrdataset$genderid)
+cor(hrdataset$EmpStat,hrdataset$PfrmId)
+cor(hrdataset$EmpStat,hrdataset$Dept_No)
+cor(hrdataset$EmpStat,hrdataset$Pos_No)
+
+```
+# -12% correlation between Employee Status & Salary
+# 5% correlation between Employee Status & Engagement Survey
+# 0.4% correlation between Employee Status & Employee Satisfaction
+# -18% correlation between Employee Status & SpecialProjectCount
+# -10% Correlation between Employee Status  & Absences
+# 1% correlation between Employee Status & Sex
+# -2% correlation between Engagement Score & Performance Score
+# -21% correlation between Employee Status & Department
+# -17% correlation between Employee Status & Position
+
+
+#Scatter Plot of Salary Vs Absence - Department Wise
+#Findings : Salary provided to IT/IS & Software Eng. are very high with respect to employees performance scores.
+```{r pressure, echo=FALSE}
+ggplot( hrdataset ) + 
+  geom_point(mapping = aes( x = PfrmId, y = Salary, color= Department)) + 
+  xlab("Performance Score") + 
+  ylab("Salary") + 
+  labs( title = "Salary vs Performance Score", subtitle = "Analysing the chart" ) + facet_wrap(~Department,nrow = 2)
+theme_classic()
+
+```
+
+#Scatter Plot of Employee Status Vs Position of Employees - Department Wise
+
+```{r pressure, echo=FALSE}
+ggplot( hrdataset ) + 
+  geom_point(mapping = aes( x = EmpStat, y = Position, color= Department)) + 
+  xlab("Employee Status") + 
+  ylab("Position of Employee") + 
+  labs( title = "Employee Status vs Position of Employeee as per department ", subtitle = "Analysing the chart" ) + facet_wrap(~Department,nrow = 2)
+theme_classic()
+
+```
+
+```{r pressure, echo=FALSE}
+
+ggplot(hrdataset, aes(EmploymentStatus, EngagementSurvey)) + geom_boxplot(fill = "green")+
+
+ scale_y_continuous("Engagement Score")+
+
+labs(title = "Box Plot", x = "Employment Status")
+
+```
+#Since, the only drop off is in "terminated for cause", weak association can be seen.
+```{r pressure, echo=FALSE}
+
+ggplot(hrdataset, aes(EmploymentStatus, Absences)) + geom_boxplot(fill = "green")+
+
+ scale_y_continuous("Absences")+
+
+ labs(title = "Box Plot", x = "Employment Status")
+
+```
+
+#Identified relationship between Salary, EngagementSurvey ,EmpSatisfaction, SpecialProjectsCount, Absences, Sex, Performance, EmployeeStatus, Department, Position
+
+#------Q3---What, if anything, increases the number of sick days that have been taken over the past year?--------------------
+
+#Identifying Impact of all variables on Engagement Score as Target Variable
+
+#Identifying relationship between Salary, Engagement Survey, Empsatisfaction, Special Project,Dayslate, Absences
+```{r}
+pairs(hrdataset[,c(5,6,7,8,12,13)], pch = 19)
+```
+
+
+```{r}
+cor(hrdataset$EngagementSurvey,hrdataset$EmpSatisfaction)
+cor(hrdataset$EngagementSurvey,hrdataset$Absences)
+cor(hrdataset$EngagementSurvey,hrdataset$Salary)
+cor(hrdataset$EngagementSurvey,hrdataset$SpecialProjectsCount)
+cor(hrdataset$EngagementSurvey,hrdataset$DaysLateLast30)
+```
+
+# 18% correlation between Engagement Score & Employee satisfaction
+# 2% correlation between Engagement Score & Absences
+# 6% correlation between Engagement Score & Salary
+# 1% Correlation between Engagement Score & Special Projects
+# -58% correlation between Engagement Score & Day Late Last 30
+
+#From above analysis checking EmpSatisfaction & DaysLateLast30 since these are showing relatively better correlation
+
+#Scatter Plot of Engagement Score Vs Employee Satisfaction - Department Wise
+
+```{r pressure, echo=FALSE}
+ggplot( hrdataset ) + 
+  geom_point(mapping = aes( x = EngagementSurvey, y = EmpSatisfaction, color= Department)) + 
+  xlab("-- Engagement Score --") + 
+  ylab("Employee Satisfaction") + 
+  labs( title = "Employee Satisfaction vs Engagement Score", subtitle = "Analysing the chart" ) + facet_wrap(~Department,nrow = 2)
+theme_classic()
+
+```
+
+#Scatter Plot of Engagement Score Vs Days Late Last 30 - Department Wise
+
+```{r pressure, echo=FALSE}
+ggplot( hrdataset ) + 
+  geom_point(mapping = aes( x = EngagementSurvey, y = DaysLateLast30, color= Department)) + 
+  xlab("-- Engagement Score --")+
+  ylab("Days Late Last 30") + 
+  labs( title = "Days Late Last 30 vs Engagement Survey", subtitle = "Analysing the chart" ) + facet_wrap(~Department,nrow = 2)
+theme_classic()
+```
+
+#Lets Check Engagement Score wrt to categorical Variables Department,EmploymentStatus, PerformanceScore,Sex
+
+#Performance Score vs Engagement Score - Mostly Exceeds & Fully Meets candidates have high engagement score, strong association seen
+
+```{r pressure, echo=FALSE}
+ggplot(hrdataset, aes(PerformanceScore, EngagementSurvey)) + geom_boxplot(fill = "red")+
+  scale_y_continuous("Engagement Score")+
+  labs(title = "Box Plot", x = "PerformanceScore")
+```
+
+#Department Vs Engagement Score - Admin engagement score is higher than median, weak association
+
+```{r pressure, echo=FALSE}
+ggplot(hrdataset, aes(Department, EngagementSurvey)) + geom_boxplot(fill = "red")+
+  scale_y_continuous("Engagement Score")+
+  labs(title = "Box Plot", x = "Department")
+```
+
+#EmploymentStatus Vs Engagement Score - Terminated for causes sees a drop in engagement score, moderate association observed
+
+```{r pressure, echo=FALSE}
+ggplot(hrdataset, aes(EmploymentStatus, EngagementSurvey)) + geom_boxplot(fill = "green")+
+  scale_y_continuous("Engagement Score")+
+  labs(title = "Box Plot", x = "Employment Status")
+```
+
+#Position Vs Engagement Score - Median of engagement score of some levels is higher, Moderate association
+
+```{r pressure, echo=FALSE}
+ggplot(hrdataset, aes(Position, EngagementSurvey)) + geom_boxplot(fill = "green")+
+  scale_y_continuous("Engagement Score")+
+  labs(title = "Box Plot", x = "Position")+theme(axis.text.x= element_text(angle=90))
+```
+
+#Identifying Linear relations with target field (Engagement Survey) 
+
+#Engagement Score vs Employee Satisfaction
+```{r pressure, echo=FALSE}
+model <- lm(EngagementSurvey ~ EmpSatisfaction, data = hrdataset)
+ggplot(hrdataset, aes(x = EngagementSurvey, y = EmpSatisfaction)) +    geom_smooth(method='lm')
+
+```
+
+
+
+
+```{r pressure, echo=FALSE}
+summary(model)
+
+```
+
+#Engagement Survey and Employee Satisfaction is showing relation between the 2 variables
+
+#Engagement Score vs Salary
+
+```{r pressure, echo=FALSE}
+model2 <- lm(EngagementSurvey ~ Salary, data = hrdataset)
+ggplot(hrdataset, aes(x = EngagementSurvey, y = Salary)) +    geom_smooth(method='lm')
+
+```
+
+
+
+```{r pressure, echo=FALSE}
+summary(model2)
+
+```
+
+#High p-value
+
+```{r pressure, echo=FALSE}
+model3 <- lm(EngagementSurvey ~ PerformanceScore, data = hrdataset)
+ggplot(hrdataset, aes(x = EngagementSurvey, y = PerformanceScore)) +    geom_smooth(method='lm')
+
+```
+
+
+```{r pressure, echo=FALSE}
+summary(model3)
+
+```
+
+
+```{r pressure, echo=FALSE}
+model4 <- lm(EngagementSurvey ~ Department, data = hrdataset)
+ggplot(hrdataset, aes(x = EngagementSurvey, y = Department)) +    geom_smooth(method='lm')
+
+```
+
+```{r pressure, echo=FALSE}
+summary(model4)
+
+```
+
+#Too high of a p-value 
+
+```{r pressure, echo=FALSE}
+model5 <- lm(EngagementSurvey ~ EmploymentStatus, data = hrdataset)
+ggplot(hrdataset, aes(x = EngagementSurvey, y = EmploymentStatus)) +    geom_smooth(method='lm')
+
+```
+
+
+```{r pressure, echo=FALSE}
+summary(model5)
+
+```
+
+#Significant p-value so hypothesis can be kept
+
+
+#------Q4---Corrected for seniority, expertise and experience, do we have a gender pay gap?----------
+
+#On going through the data seniority, expertise and experience can be designated by Position, Department and Years in Post.And Gender pay Gap can be calculated using Salary and Sex columns.
+
+#the error in the years_in_post column has to be eliminated first
+
+```{r}
+terminated <- !(is.na(hrdataset$DateofTermination))
+
+hrdataset$Years_in_post[terminated] <- interval(start = as.Date(hrdataset$DateofHire[terminated]), end = as.Date(hrdataset$DateofTermination[terminated]))/duration(n = 1,units = "years")
+```
+#In order to perform some statistical analyses, we will be converting our sex column into a new, modified column called Gender, which will be 1 for men and 0 for women.
+```{r}
+hrdataset_factored <- hrdataset %>% mutate (gender= ifelse(Sex=="M",1,0))
+```
+#Now we can run some cor.
+```{r}
+Q4 <- cor.test (hrdataset_factored$Salary, hrdataset_factored$gender)
+
+print(paste("Corr coeff: ",round(Q4$estimate, 2)))
+print(paste("p-value: ",format.pval(Q4$p.value, digits=2)))
+       
+``` 
+```{r}
+Q4 <- cor.test (hrdataset_factored$Salary, hrdataset_factored$Years_in_post)
+
+print(paste("Corr coeff: ",round(Q4$estimate, 2)))
+print(paste("p-value: ",format.pval(Q4$p.value, digits=2)))
+       
+``` 
+
+#Upon first analysis of correlation. Salary has a weak correlation with gender and, Years_in_Post as shown above. 
+```{r}
+ggplot( hrdataset_factored ) + 
+  geom_point(mapping = aes( x = Department, y = hrdataset_factored$Salary, color= hrdataset_factored$gender)) + 
+  xlab("-- Department --") + 
+  ylab("Salary") + 
+  labs( title = "Salary vs hrdataset_factored$Department", subtitle = "Department" ) + facet_wrap(~gender,nrow = 2)
+theme_classic()
+
+```
+```{r pressure, echo=FALSE}
+ggplot(hrdataset, aes(Sex, Salary)) + geom_boxplot(fill = "blue")+
+ scale_y_continuous("Salary")+
+labs(title = "Box Plot", x = "Sex")
+```
+
+#Just to Check, we incorporate this data into our Multiple Linear Regression Analysis and correct it for Positions and seniority .
+
+```{r}
+Q4_model <- glm(Salary ~ gender + Years_in_post + Department+ Position , data=hrdataset_factored)
+summary (Q4_model)
+         
+``` 
+#We are obtaining a statistically significant P-value when utilising these variables in the model, but when we look at the gender variable, which is much greater than our significance level at 0.8230, it is not statistically significant. Therefore, when seniority and position and department are taken into account, we can say that there is no gender pay discrepancy.
